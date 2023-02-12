@@ -1,12 +1,10 @@
 {
   "name": "flashliquidity-bastion",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
-  "scripts" : {
-    "compile" : "npx hardhat compile",
-    "test" : "npx hardhat test",
-    "slither": "slither . --solc-remaps '@openzeppelin=node_modules/@openzeppelin @chainlink=node_modules/@chainlink' --exclude naming-convention,external-function,low-level-calls",
-    "toolbox": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
     "lint": "solhint 'contracts/*.sol'",
     "lint:fix": "solhint 'contracts/**/*.sol' --fix",
     "format": "prettier --write ."
@@ -27,7 +25,7 @@
     "dotenv": "^16.0.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.1",
-    "hardhat": "^2.11.1",
+    "hardhat": "2.12.5",
     "hardhat-deploy": "^0.11.15",
     "hardhat-deploy-ethers": "^0.3.0-beta.13",
     "mocha": "^10.0.0",
