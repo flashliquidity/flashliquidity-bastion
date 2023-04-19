@@ -3,25 +3,24 @@ import "@nomiclabs/hardhat-etherscan"
 import "@nomiclabs/hardhat-ethers"
 import "hardhat-deploy"
 import "hardhat-deploy-ethers"
+import "hardhat-gas-reporter"
 import "dotenv/config"
 import { HardhatUserConfig } from "hardhat/config"
 
 const MAINNET_RPC = "https://rpc-mainnet.maticvigil.com"
 const MUMBAI_RPC = "https://rpc-mumbai.maticvigil.com/"
-const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "api key"
-const ALCHEMY_MAINNET_RPC_URL = process.env.ALCHEMY_MAINNET_RPC_URL || "alchemy rpc"
 
 const config: HardhatUserConfig = {
     etherscan: {
-        apiKey: POLYGONSCAN_API_KEY,
+        apiKey: process.env.POLYGONSCAN_API_KEY,
     },
     networks: {
         hardhat: {
             forking: {
                 // eslint-disable-next-line
                 enabled: true,
-                url: ALCHEMY_MAINNET_RPC_URL,
-                blockNumber: 38945249,
+                url: process.env.ALCHEMY_MAINNET_RPC_URL,
+                blockNumber: 41000000,
             },
         },
         matic: {
@@ -40,13 +39,20 @@ const config: HardhatUserConfig = {
             accounts: [process.env.PRIVATE_KEY],
         },
     },
+    gasReporter: {
+        enabled: true,
+        currency: "USD",
+        outputFile: "gas-report.txt",
+        noColors: true,
+        // coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+    },
     solidity: {
         version: "0.8.17",
         settings: {
             optimizer: {
                 enabled: true,
                 runs: 1000000,
-            }
+            },
         },
     },
 }
