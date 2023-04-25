@@ -12,10 +12,11 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Governable} from "./types/Guardable.sol";
 import {Guardable} from "./types/Guardable.sol";
 import {FullMath} from "./libraries/FullMath.sol";
 
-contract BastionV3 is IBastionV3, Guardable {
+contract BastionV3 is IBastionV3, Governable, Guardable {
     using SafeERC20 for IERC20;
 
     address public immutable factory;
@@ -81,6 +82,7 @@ contract BastionV3 is IBastionV3, Guardable {
 
     constructor(
         address _governor,
+        address _guardian,
         address _factory,
         address _router,
         address _farmFactory,
@@ -88,7 +90,7 @@ contract BastionV3 is IBastionV3, Guardable {
         uint256 _maxDeviationFactor,
         uint256 _maxStaleness,
         uint256 _transferGovernanceDelay
-    ) Guardable(_governor, _transferGovernanceDelay) {
+    ) Governable(_governor, _transferGovernanceDelay) Guardable(_guardian) {
         factory = _factory;
         router = _router;
         farmFactory = _farmFactory;
@@ -118,7 +120,7 @@ contract BastionV3 is IBastionV3, Guardable {
         }
     }
 
-    function abortWhitelisting(address[] calldata _recipients) external onlyGovernor {
+    function abortWhitelisting(address[] calldata _recipients) external onlyGuardian {
         for (uint256 i = 0; i < _recipients.length; ) {
             if (isWhitelisted[_recipients[i]]) {
                 revert AlreadyWhitelisted();
@@ -158,7 +160,7 @@ contract BastionV3 is IBastionV3, Guardable {
         }
     }
 
-    function removeFromWhitelist(address[] calldata _recipients) external onlyGovernor {
+    function removeFromWhitelist(address[] calldata _recipients) external onlyGuardian {
         for (uint256 i = 0; i < _recipients.length; ) {
             if (!isWhitelisted[_recipients[i]]) {
                 revert NotWhitelisted();

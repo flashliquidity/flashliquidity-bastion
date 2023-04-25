@@ -20,7 +20,7 @@ const config: HardhatUserConfig = {
                 // eslint-disable-next-line
                 enabled: true,
                 url: process.env.ALCHEMY_MAINNET_RPC_URL,
-                blockNumber: 41000000,
+                blockNumber: 41900000,
             },
         },
         matic: {

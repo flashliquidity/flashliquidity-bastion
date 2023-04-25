@@ -25,7 +25,7 @@ describe("BastionV3", function () {
                     forking: {
                         enabled: true,
                         jsonRpcUrl: process.env.ALCHEMY_MAINNET_RPC_URL,
-                        blockNumber: 41400000,
+                        blockNumber: 41900000,
                     },
                 },
             ],
@@ -50,6 +50,7 @@ describe("BastionV3", function () {
         this.usdcPriceFeed = "0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7"
         this.bastion = await this.Bastion.deploy(
             this.governor.address,
+            this.guardian.address,
             this.factory.address,
             this.router.address,
             this.farmFactory.address,
@@ -59,7 +60,6 @@ describe("BastionV3", function () {
             this.transferGovernanceDelay
         )
         await this.bastion.deployed()
-        await this.bastion.connect(this.governor).setGuardians([this.guardian.address], [true])
         await setStorageAt(
             this.factory.address,
             2,
@@ -106,7 +106,7 @@ describe("BastionV3", function () {
         await this.bastion.connect(this.governor).setExtManagerSetters([this.bob.address], [true])
     })
 
-    it("Should allow only Governor or external manger setters to set pairs manager", async function () {
+    it("Should allow only Governor or external manager setters to set pairs manager", async function () {
         await expect(
             this.bastion
                 .connect(this.bob)
@@ -121,13 +121,13 @@ describe("BastionV3", function () {
             .setPairManager(this.maticUsdcPair.address, this.alice.address)
     })
 
-    it("Should allow only Governor to set guardians", async function () {
+    it("Should allow only Guardian to set new guardian address", async function () {
         await expect(
-            this.bastion.connect(this.bob).setGuardians([this.alice.address], [true])
-        ).to.be.revertedWith("NotAuthorized()")
-        expect(await this.bastion.isGuardian(this.alice.address)).to.be.false
-        await this.bastion.connect(this.governor).setGuardians([this.alice.address], [true])
-        expect(await this.bastion.isGuardian(this.alice.address)).to.be.true
+            this.bastion.connect(this.bob).setGuardian(this.alice.address)
+        ).to.be.revertedWith("NotGuardian()")
+        expect(await this.bastion.guardian()).to.not.be.equal(this.alice.address)
+        await this.bastion.connect(this.guardian).setGuardian(this.alice.address)
+        expect(await this.bastion.guardian()).to.be.equal(this.alice.address)
     })
 
     it("Should allow only Governor to request governance transfer", async function () {
@@ -154,21 +154,21 @@ describe("BastionV3", function () {
         expect(await this.bastion.governor()).to.be.equal(this.bob.address)
     })
 
-    it("Should allow only Guardians to pause Bastion and Governor to unpause it", async function () {
+    it("Should allow only Guardian to pause/unpause Bastion", async function () {
         expect(await this.bastion.isPaused()).to.be.false
         await expect(this.bastion.connect(this.bob).pause()).to.be.revertedWith("NotGuardian()")
         await this.bastion.connect(this.guardian).pause()
         expect(await this.bastion.isPaused()).to.be.true
-        await expect(this.bastion.connect(this.governor).pause()).to.be.revertedWith("Paused()")
-        await expect(this.bastion.connect(this.bob).unpause()).to.be.revertedWith("NotAuthorized()")
-        await this.bastion.connect(this.governor).unpause()
+        await expect(this.bastion.connect(this.guardian).pause()).to.be.revertedWith("Paused()")
+        await expect(this.bastion.connect(this.bob).unpause()).to.be.revertedWith("NotGuardian()")
+        await this.bastion.connect(this.guardian).unpause()
         expect(await this.bastion.isPaused()).to.be.false
-        await expect(this.bastion.connect(this.governor).unpause()).to.be.revertedWith(
+        await expect(this.bastion.connect(this.guardian).unpause()).to.be.revertedWith(
             "NotPaused()"
         )
     })
 
-    it("Should allow only Guardians to request whitelisting", async function () {
+    it("Should allow only Guardian to request whitelisting", async function () {
         expect(await this.bastion.isWhitelisted(this.alice.address)).to.be.false
         await expect(
             this.bastion.connect(this.bob).requestWhitelisting([this.alice.address])
@@ -196,29 +196,32 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).executeWhitelisting([this.bob.address])
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).executeWhitelisting([this.bob.address])
     })
 
-    it("Should allow only Governor to abort whitelisting", async function () {
+    it("Should allow only Guardian to abort whitelisting", async function () {
         await expect(
-            this.bastion.connect(this.governor).abortWhitelisting([this.bob.address])
+            this.bastion.connect(this.guardian).abortWhitelisting([this.bob.address])
         ).to.be.revertedWith("NotRequested()")
         await this.bastion.connect(this.guardian).requestWhitelisting([this.bob.address])
         expect(await this.bastion.whitelistReqTimestamp(this.bob.address)).to.not.be.equal(0)
-        await this.bastion.connect(this.governor).abortWhitelisting([this.bob.address])
+        await expect(
+            this.bastion.connect(this.governor).abortWhitelisting([this.bob.address])
+        ).to.be.revertedWith("NotGuardian()")
+        await this.bastion.connect(this.guardian).abortWhitelisting([this.bob.address])
         expect(await this.bastion.whitelistReqTimestamp(this.bob.address)).to.be.equal(0)
     })
 
-    it("Should allow only Governor to remove whitelisted address", async function () {
+    it("Should allow only Guardian to remove whitelisted address", async function () {
         await this.bastion.connect(this.guardian).requestWhitelisting([this.bob.address])
         await time.increase(await this.bastion.whitelistDelay())
         await this.bastion.connect(this.governor).executeWhitelisting([this.bob.address])
         await expect(
-            this.bastion.connect(this.guardian).removeFromWhitelist([this.bob.address])
-        ).to.be.revertedWith("NotAuthorized()")
+            this.bastion.connect(this.governor).removeFromWhitelist([this.bob.address])
+        ).to.be.revertedWith("NotGuardian()")
         expect(await this.bastion.isWhitelisted(this.bob.address)).to.be.true
-        await this.bastion.connect(this.governor).removeFromWhitelist([this.bob.address])
+        await this.bastion.connect(this.guardian).removeFromWhitelist([this.bob.address])
         expect(await this.bastion.isWhitelisted(this.bob.address)).to.be.false
     })
 
@@ -243,7 +246,7 @@ describe("BastionV3", function () {
                 .connect(this.governor)
                 .transferToWhitelisted(this.bob.address, [this.usdc.address], [1])
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion
             .connect(this.governor)
             .transferToWhitelisted(this.bob.address, [this.usdc.address], [1])
@@ -310,7 +313,7 @@ describe("BastionV3", function () {
                 .connect(this.governor)
                 .swap(this.usdc.address, this.weth.address, "10000000")
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion
             .connect(this.governor)
             .swap(this.usdc.address, this.weth.address, "10000000")
@@ -324,18 +327,18 @@ describe("BastionV3", function () {
                 [this.wethPriceFeed, this.usdcPriceFeed]
             )
         await expect(
-            this.bastion.connect(this.bob).swap(this.usdc.address, this.weth.address, "100000000")
+            this.bastion.connect(this.bob).swap(this.usdc.address, this.weth.address, "80000000")
         ).to.be.revertedWith("NotAuthorized()")
         await this.bastion.connect(this.guardian).pause()
         await expect(
             this.bastion
                 .connect(this.governor)
-                .swap(this.usdc.address, this.weth.address, "100000000")
+                .swap(this.usdc.address, this.weth.address, "80000000")
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion
             .connect(this.governor)
-            .swap(this.usdc.address, this.weth.address, "100000000")
+            .swap(this.usdc.address, this.weth.address, "80000000")
     })
 
     it("Should allow only Governor to add liquidity when not paused (open pool)", async function () {
@@ -359,7 +362,7 @@ describe("BastionV3", function () {
                 .connect(this.governor)
                 .liquefy(this.weth.address, this.usdc.address, this.wethBalance, this.usdcBalance)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion
             .connect(this.governor)
             .liquefy(this.weth.address, this.usdc.address, this.wethBalance, this.usdcBalance)
@@ -383,7 +386,7 @@ describe("BastionV3", function () {
                 .connect(this.governor)
                 .liquefy(this.weth.address, this.usdc.address, this.wethBalance, this.usdcBalance)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion
             .connect(this.governor)
             .liquefy(this.weth.address, this.usdc.address, this.wethBalance, this.usdcBalance)
@@ -410,7 +413,7 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).solidify(this.maticUsdcPair.address, balance)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).solidify(this.maticUsdcPair.address, balance)
     })
 
@@ -432,7 +435,7 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).solidify(this.maticUsdcPair.address, balance)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).solidify(this.maticUsdcPair.address, balance)
     })
 
@@ -450,7 +453,7 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).stakeLpTokens(this.maticUsdcPair.address, 100)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).stakeLpTokens(this.maticUsdcPair.address, 100)
     })
 
@@ -473,7 +476,7 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).claimStakingRewards(this.maticUsdcPair.address)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).unstakeLpTokens(this.maticUsdcPair.address, 100)
         await this.bastion.connect(this.governor).claimStakingRewards(this.maticUsdcPair.address)
     })
@@ -491,7 +494,7 @@ describe("BastionV3", function () {
         await expect(
             this.bastion.connect(this.governor).exitStaking(this.maticUsdcPair.address)
         ).to.be.revertedWith("Paused()")
-        await this.bastion.connect(this.governor).unpause()
+        await this.bastion.connect(this.guardian).unpause()
         await this.bastion.connect(this.governor).exitStaking(this.maticUsdcPair.address)
     })
 
