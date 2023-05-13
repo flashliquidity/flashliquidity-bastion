@@ -10,9 +10,9 @@ import {ILiquidFarm} from "./interfaces/ILiquidFarm.sol";
 import {ILiquidFarmFactory} from "./interfaces/ILiquidFarmFactory.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Governable} from "./types/Guardable.sol";
+import {Governable} from "./types/Governable.sol";
 import {Guardable} from "./types/Guardable.sol";
 import {FullMath} from "./libraries/FullMath.sol";
 
@@ -25,7 +25,7 @@ contract BastionV3 is IBastionV3, Governable, Guardable {
     IWETH public immutable weth;
     uint256 public maxDeviationFactor;
     uint256 public maxStaleness;
-    uint256 public whitelistDelay = 3 days;
+    uint256 public constant whitelistDelay = 3 days;
     mapping(address => bool) public isExtManagerSetter;
     mapping(address => bool) public isWhitelisted;
     mapping(address => uint256) public whitelistReqTimestamp;
@@ -317,8 +317,7 @@ contract BastionV3 is IBastionV3, Governable, Guardable {
         onlyGovernor
         whenNotPaused
     {
-        ILiquidFarmFactory _arbFarmFactory = ILiquidFarmFactory(farmFactory);
-        address _farm = _arbFarmFactory.lpTokenFarm(_lpToken);
+        address _farm = ILiquidFarmFactory(farmFactory).lpTokenFarm(_lpToken);
         if (_farm == address(0)) {
             revert InvalidFarm();
         }
@@ -327,8 +326,7 @@ contract BastionV3 is IBastionV3, Governable, Guardable {
     }
 
     function exitStaking(address _lpToken) external onlyGovernor whenNotPaused {
-        ILiquidFarmFactory _arbFarmFactory = ILiquidFarmFactory(farmFactory);
-        address _farm = _arbFarmFactory.lpTokenFarm(_lpToken);
+        address _farm = ILiquidFarmFactory(farmFactory).lpTokenFarm(_lpToken);
         if (_farm == address(0)) {
             revert InvalidFarm();
         }
@@ -337,8 +335,7 @@ contract BastionV3 is IBastionV3, Governable, Guardable {
     }
 
     function claimStakingRewards(address _lpToken) external onlyGovernor whenNotPaused {
-        ILiquidFarmFactory _arbFarmFactory = ILiquidFarmFactory(farmFactory);
-        address _farm = _arbFarmFactory.lpTokenFarm(_lpToken);
+        address _farm = ILiquidFarmFactory(farmFactory).lpTokenFarm(_lpToken);
         if (_farm == address(0)) {
             revert InvalidFarm();
         }
@@ -587,11 +584,11 @@ contract BastionV3 is IBastionV3, Governable, Guardable {
             revert StalenessToHigh();
         }
         if (_token0Decimals == 0) {
-            _token0Decimals = 10**ERC20(_token0).decimals();
+            _token0Decimals = 10**IERC20Metadata(_token0).decimals();
             tokenDecimals[_token0] = _token0Decimals;
         }
         if (_token1Decimals == 0) {
-            _token1Decimals = 10**ERC20(_token1).decimals();
+            _token1Decimals = 10**IERC20Metadata(_token1).decimals();
             tokenDecimals[_token1] = _token1Decimals;
         }
         if (_token0Decimals == 0 || _token1Decimals == 0) {

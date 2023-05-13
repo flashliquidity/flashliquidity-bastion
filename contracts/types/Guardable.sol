@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {Governable} from "./Governable.sol";
-
-abstract contract Guardable is Governable {
+abstract contract Guardable {
     bool public isPaused;
     address public guardian;
 

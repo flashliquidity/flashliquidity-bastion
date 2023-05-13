@@ -28,18 +28,18 @@ contract LinkPegSwap is BastionConnector {
         linkERC667 = _linkERC667;
     }
 
-    function swapLinkToken(bool toERC667, uint256 amount) external onlyGovernor {
-        address source;
-        address dest;
-        if (toERC667) {
-            source = linkERC20;
-            dest = linkERC667;
+    function swapLinkToken(bool _toERC667, uint256 _amount) external onlyGovernor {
+        address _source;
+        address _dest;
+        if (_toERC667) {
+            _source = linkERC20;
+            _dest = linkERC667;
         } else {
-            source = linkERC667;
-            dest = linkERC20;
+            _source = linkERC667;
+            _dest = linkERC20;
         }
-        IERC20(source).approve(pegSwap, amount);
-        IPegSwap(pegSwap).swap(amount, source, dest);
-        IERC20(dest).safeTransfer(bastion, amount);
+        IERC20(_source).approve(pegSwap, _amount);
+        IPegSwap(pegSwap).swap(_amount, _source, _dest);
+        IERC20(_dest).safeTransfer(bastion, _amount);
     }
 }
